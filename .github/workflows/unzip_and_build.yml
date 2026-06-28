@@ -13,17 +13,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Setup Android SDK dulu sebelum build
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: |
             platform-tools
             platforms;android-33
-            platforms;android-34
             build-tools;33.0.0
-            build-tools;34.0.0
-            ndk;25.1.8937393  # Tambahin NDK kalo butuh native code
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
@@ -31,53 +27,47 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # Extract zip dengan lebih aman
-      - name: Extract Any Zip File
+      # Extract zip dengan handle spasi dan nested zip
+      - name: Extract Main Zip
         run: |
-          ZIP_FILE=$(ls *.zip 2>/dev/null | head -n 1)
-          if [ -n "$ZIP_FILE" ]; then
-            echo "✅ Menemukan berkas arsip: $ZIP_FILE"
-            unzip -o "$ZIP_FILE"
-            rm "$ZIP_FILE"
-          else
-            echo "❌ Tidak ditemukan file .zip sama sekali di halaman utama repo!"
-            exit 1
-          fi
-
-      # Cek struktur folder dan gradle wrapper
-      - name: Check Android Structure
-        run: |
-          ANDROID_DIR=$(find . -type d -name "android" | head -n 1)
-          if [ -z "$ANDROID_DIR" ]; then
-            echo "❌ Folder 'android' tidak ditemukan!"
-            exit 1
-          fi
-          echo "ANDROID_DIR=$ANDROID_DIR" >> $GITHUB_ENV
-          
-          # Cek gradlew
-          if [ ! -f "$ANDROID_DIR/gradlew" ]; then
-            echo "❌ File gradlew tidak ditemukan di $ANDROID_DIR"
+          # Cari file zip utama (handle spasi)
+          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" -not -name "*kontrol*" | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "❌ Tidak ditemukan file zip!"
             exit 1
           fi
           
-          # Cek gradle wrapper properties
-          if [ ! -f "$ANDROID_DIR/gradle/wrapper/gradle-wrapper.properties" ]; then
-            echo "⚠️ gradle-wrapper.properties tidak ditemukan, mungkin perlu regenerate"
-          fi
+          echo "📦 Extracting: $ZIP_FILE"
+          unzip -o "$ZIP_FILE"
+          
+          # Hapus zip setelah extract
+          rm "$ZIP_FILE"
 
-      # Build dengan error handling yang lebih baik
+      # Cari folder android dan build
       - name: Build Android APK
         run: |
-          cd "$ANDROID_DIR"
-          chmod +x gradlew
+          # Cari folder android (tapi exclude yang di .github)
+          ANDROID_DIR=$(find . -type d -name "android" -not -path "./.github/*" | head -n 1)
           
-          # Coba build dengan stacktrace untuk lihat error detail
+          if [ -z "$ANDROID_DIR" ]; then
+            echo "❌ Folder android tidak ditemukan!"
+            echo "📂 Isi direktori:"
+            ls -la
+            exit 1
+          fi
+          
+          echo "🎯 Found android at: $ANDROID_DIR"
+          cd "$ANDROID_DIR"
+          
+          # Cek gradlew
+          if [ ! -f "gradlew" ]; then
+            echo "❌ gradlew not found!"
+            exit 1
+          fi
+          
+          chmod +x gradlew
           ./gradlew assembleRelease --stacktrace --no-daemon
-        env:
-          ANDROID_HOME: /usr/local/android-sdk
-          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
-      # Upload APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -85,5 +75,4 @@ jobs:
           path: |
             **/build/outputs/apk/release/*.apk
             **/build/outputs/apk/debug/*.apk
-        # Jangan gagalin workflow kalo ga ada APK
-        continue-on-error: true
+          continue-on-error: true
