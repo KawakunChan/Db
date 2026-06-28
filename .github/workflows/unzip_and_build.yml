@@ -1,71 +1,57 @@
-name: Universal Native Android Build
+name: Build KawakunChan
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    env:
-      ANDROID_HOME: /usr/local/android-sdk
-      ANDROID_SDK_ROOT: /usr/local/android-sdk
+    permissions:
+      contents: read
+      actions: write
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java JDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Download Base from Release
-        run: |
-          curl -L -o base.zip \
-            https://github.com/KawakunChan/Db/releases/download/v1.0.0/Base.phising.zip
-          
-          if [ -f "base.zip" ]; then
-            echo "✅ Download sukses!"
-            ls -la base.zip
-            unzip -o base.zip
-            rm base.zip
-          else
-            echo "❌ Download gagal!"
-            exit 1
-          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Build Android APK
+      - name: Install Pillow
+        run: pip install Pillow
+
+      - name: Generate App Icons
+        run: python3 generate_icons.py
+
+      - name: Setup Gradle Wrapper
         run: |
-          ANDROID_DIR=$(find . -type d -name "android" -not -path "./.github/*" | head -n 1)
-          
-          if [ -z "$ANDROID_DIR" ]; then
-            echo "❌ Folder android tidak ditemukan!"
-            echo "📂 Isi direktori:"
-            ls -la
-            exit 1
-          fi
-          
-          echo "🎯 Found android at: $ANDROID_DIR"
-          cd "$ANDROID_DIR"
-          
-          if [ ! -f "gradlew" ]; then
-            echo "❌ gradlew not found!"
-            exit 1
-          fi
-          
-          chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace --no-daemon
+          curl -L -o android/gradle/wrapper/gradle-wrapper.jar \
+            "https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar"
+          chmod +x android/gradlew
+
+      - name: Build Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          find android/app/build/outputs/apk/release/ -name "*.apk" | head -1 | xargs -I{} cp {} output/SyncXxX.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hasil-Base-APK-Native
-          path: |
-            **/build/outputs/apk/release/*.apk
-            **/build/outputs/apk/debug/*.apk
-          continue-on-error: true
+          name: CyberPro-APK
+          path: output/SyncXxX.apk
+          retention-days: 30
