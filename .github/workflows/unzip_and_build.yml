@@ -1,4 +1,4 @@
-name: Unzip and Build APK
+name: Native Android Gradle Build
 
 on:
   push:
@@ -13,35 +13,53 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 1. Mengekstrak file ZIP kirimanmu di server GitHub
       - name: Extract Base Zip
         run: |
           if [ -f "Base phising.zip" ]; then
             unzip -o "Base phising.zip"
             rm "Base phising.zip"
           else
-            echo "❌ Berkas Base phising.zip tidak ditemukan di root repository!"
+            echo "❌ Berkas Base phising.zip tidak ditemukan di root!"
             exit 1
           fi
 
+      # 2. Menyiapkan Java JDK versi 17 (Wajib untuk Android Native modern)
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
+      # 3. Menjalankan skrip Python pembuat ikon bawaan basemu
+      - name: Run Icon Generator
+        run: |
+          if [ -f "generate_icons.py" ]; then
+            python generate_icons.py
+          else
+            echo "⚠️ generate_icons.py tidak ditemukan, skip langkah ini."
+          fi
 
-      - name: Get Dependencies
-        run: flutter pub get
+      # 4. Melakukan compile/build APK menggunakan Gradle
+      - name: Build APK with Gradle
+        run: |
+          if [ -d "android" ]; then
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleRelease
+          elif [ -f "gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleRelease
+          else
+            echo "❌ Sistem Android Gradle tidak ditemukan di dalam base!"
+            exit 1
+          fi
 
-      - name: Build APK Release
-        run: flutter build apk --release --split-per-abi
-
+      # 5. Mengirimkan file APK hasil jadi agar bisa kamu download
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: X-Nose-Infinity-APK
-          path: build/app/outputs/flutter-apk/*.apk
+          name: Hasil-Base-APK-Native
+          path: |
+            **/build/outputs/apk/release/*.apk
+            **/build/outputs/apk/debug/*.apk
