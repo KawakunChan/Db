@@ -22,6 +22,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Download Base from Release
+        run: |
+          curl -L -o base.zip \
+            https://github.com/KawakunChan/Db/releases/download/v1.0.0/Base.phising.zip
+          
+          if [ -f "base.zip" ]; then
+            echo "✅ Download sukses!"
+            unzip -o base.zip
+            rm base.zip
+          else
+            echo "❌ Download gagal!"
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
