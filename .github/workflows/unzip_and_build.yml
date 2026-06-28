@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
+    env:
+      ANDROID_HOME: /usr/local/android-sdk
+      ANDROID_SDK_ROOT: /usr/local/android-sdk
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,7 +24,6 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # Download dari release
       - name: Download Base from Release
         run: |
           curl -L -o base.zip \
@@ -49,6 +52,12 @@ jobs:
           
           echo "🎯 Found android at: $ANDROID_DIR"
           cd "$ANDROID_DIR"
+          
+          if [ ! -f "gradlew" ]; then
+            echo "❌ gradlew not found!"
+            exit 1
+          fi
+          
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace --no-daemon
 
