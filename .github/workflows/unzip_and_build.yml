@@ -1,4 +1,4 @@
-name: Native Android Gradle Build
+name: Universal Native Android Build
 
 on:
   push:
@@ -13,49 +13,39 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Mengekstrak file ZIP kirimanmu di server GitHub
-      - name: Extract Base Zip
+      # Script ini akan otomatis mendeteksi file .zip apa saja di repo kamu tanpa peduli namanya
+      - name: Extract Any Zip File
         run: |
-          if [ -f "Base phising.zip" ]; then
-            unzip -o "Base phising.zip"
-            rm "Base phising.zip"
+          ZIP_FILE=$(ls *.zip 2>/dev/null | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "✅ Menemukan berkas arsip: $ZIP_FILE"
+            unzip -o "$ZIP_FILE"
+            rm "$ZIP_FILE"
           else
-            echo "❌ Berkas Base phising.zip tidak ditemukan di root!"
+            echo "❌ Tidak ditemukan file .zip sama sekali di halaman utama repo!"
             exit 1
           fi
 
-      # 2. Menyiapkan Java JDK versi 17 (Wajib untuk Android Native modern)
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # 3. Menjalankan skrip Python pembuat ikon bawaan basemu
-      - name: Run Icon Generator
+      # Mencari otomatis di mana letak folder android kamu berada
+      - name: Locate Android and Build
         run: |
-          if [ -f "generate_icons.py" ]; then
-            python generate_icons.py
-          else
-            echo "⚠️ generate_icons.py tidak ditemukan, skip langkah ini."
-          fi
-
-      # 4. Melakukan compile/build APK menggunakan Gradle
-      - name: Build APK with Gradle
-        run: |
-          if [ -d "android" ]; then
-            cd android
-            chmod +x gradlew
-            ./gradlew assembleRelease
-          elif [ -f "gradlew" ]; then
+          ANDROID_DIR=$(find . -type d -name "android" | head -n 1)
+          if [ -n "$ANDROID_DIR" ]; then
+            echo "🎯 Folder android ditemukan di: $ANDROID_DIR"
+            cd "$ANDROID_DIR"
             chmod +x gradlew
             ./gradlew assembleRelease
           else
-            echo "❌ Sistem Android Gradle tidak ditemukan di dalam base!"
+            echo "❌ Folder bernama 'android' tidak ditemukan di dalam ZIP kamu!"
             exit 1
           fi
 
-      # 5. Mengirimkan file APK hasil jadi agar bisa kamu download
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
