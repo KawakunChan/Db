@@ -25,6 +25,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.19.6'
           channel: 'stable'
 
       - name: Download Base from Release
@@ -37,7 +38,7 @@ jobs:
             rm base.zip
             
             if [ -d "otax" ]; then
-              echo "📂 Menemukan folder 'otax'. Memindahkan isinya ke root..."
+              echo "📂 Menemukan folder 'otax'. Memindahkan isinya..."
               mv otax/* . 2>/dev/null || true
               mv otax/.* . 2>/dev/null || true
               rm -rf otax
