@@ -25,7 +25,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.40.0'
+          flutter-version: '3.27.0'
           channel: 'stable'
 
       - name: Download Base from Release
@@ -45,8 +45,10 @@ jobs:
             fi
 
             if [ -f "pubspec.yaml" ]; then
-              echo "🛠️ Menyesuaikan batasan SDK..."
-              sed -i '/sdk:.*[0-9]/s/sdk:.*/sdk: ">=3.7.0 <5.0.0"/' pubspec.yaml
+              echo "🛠️ Menyesuaikan batasan SDK dan package..."
+              sed -i '/sdk:.*[0-9]/s/sdk:.*/sdk: ">=3.6.0 <5.0.0"/' pubspec.yaml
+              sed -i 's/flutter_lints: .*/flutter_lints: ^3.0.0/g' pubspec.yaml
+              sed -i 's/device_info_plus: .*/device_info_plus: ^10.0.0/g' pubspec.yaml
             fi
 
           else
