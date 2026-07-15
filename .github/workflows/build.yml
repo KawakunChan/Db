@@ -28,58 +28,70 @@ jobs:
           flutter-version: '3.32.5'
           channel: 'stable'
 
-      - name: Download Base from Release
+      - name: Download and Patch Base
         run: |
-          curl -L -o base.zip \
-            https://github.com/KawakunChan/Db/releases/download/v1.0.0/otax.zip
-          if [ -f "base.zip" ]; then
-            echo "✅ Download sukses!"
-            unzip -o base.zip
-            rm base.zip
-            
-            if [ -d "otax" ]; then
-              echo "📂 Menemukan folder 'otax'. Memindahkan isinya..."
-              mv otax/* . 2>/dev/null || true
-              mv otax/.* . 2>/dev/null || true
-              rm -rf otax
-            fi
+          curl -L -o base.zip https://github.com/KawakunChan/Db/releases/download/v1.0.0/otax.zip
+          unzip -o base.zip
+          
+          sed -i 's/await commentum.listComments(widget.mediaId.toString(),/await commentum.listComments(/g' lib/ui/models/bottom_sheets/commentSection.dart || true
 
-            if [ -f "pubspec.yaml" ]; then
-              echo "🛠️ Menerapkan kombo paksaan versi..."
-              sed -i '/sdk:.*[0-9]/s/sdk:.*/sdk: ">=3.6.0 <5.0.0"/' pubspec.yaml
-              sed -i 's/flutter_lints: .*/flutter_lints: ^3.0.0/g' pubspec.yaml
-              sed -i 's/device_info_plus: .*/device_info_plus: ^10.0.0/g' pubspec.yaml
-              echo -e "\ndependency_overrides:\n  path: 1.9.0\n  meta: 1.15.0\n  xml: 6.5.0\n  app_links: 6.4.1" >> pubspec.yaml
-            fi
+          cat <<EOF > lib/core/database/commentum/commentumTokenStore.dart
+          import 'package:commentum_client/commentum_client.dart';
+          import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-          else
-            echo "❌ Download gagal!"
-            exit 1
+          class CommentumTokenStore extends CommentumStorage {
+            String _providerKey(CommentumProvider provider) => "commentum_\${provider.name}_token";
+
+            final _fss = const FlutterSecureStorage();
+
+            @override
+            Future<void> clearAll() async {
+              for (final provider in CommentumProvider.values) {
+                await _fss.delete(key: _providerKey(provider));
+              }
+            }
+
+            @override
+            Future<void> deleteToken(CommentumProvider provider) {
+              return _fss.delete(key: _providerKey(provider));
+            }
+
+            @override
+            Future<String?> getToken(CommentumProvider provider) {
+              return _fss.read(key: _providerKey(provider));
+            }
+
+            @override
+            Future<void> saveToken(CommentumProvider provider, String token) {
+              return _fss.write(key: _providerKey(provider), value: token);
+            }
+
+            @override
+            Future<Map<CommentumProvider, String>> getAllTokens() async {
+              final tokens = <CommentumProvider, String>{};
+              for (final provider in CommentumProvider.values) {
+                final token = await _fss.read(key: _providerKey(provider));
+                if (token != null) {
+                  tokens[provider] = token;
+                }
+              }
+              return tokens;
+            }
+          }
+          EOF
+
+          if [ -f "pubspec.yaml" ]; then
+             sed -i '/sdk:.*[0-9]/s/sdk:.*/sdk: ">=3.6.0 <5.0.0"/' pubspec.yaml
+             echo -e "\ndependency_overrides:\n  path: 1.9.0\n  meta: 1.15.0\n  xml: 6.5.0\n  app_links: 6.4.1" >> pubspec.yaml
           fi
-
-      - name: Generate Debug Keystore
-        run: |
-          mkdir -p android/app
-          cd android/app
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug, O=Android, C=US"
 
       - name: Build Release APK
         run: |
           flutter pub get
           flutter build apk --release
 
-      - name: Rename APK
-        run: |
-          mkdir -p output
-          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-            cp build/app/outputs/flutter-apk/app-release.apk output/SyncXxX.apk
-          else
-            find android/app/build/outputs/apk/release/ -name "*.apk" | head -1 | xargs -I{} cp {} output/SyncXxX.apk
-          fi
-
-      - name: Upload APK Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: CyberPro-APK
-          path: output/SyncXxX.apk
-          retention-days: 30
+          path: build/app/outputs/flutter-apk/app-release.apk
