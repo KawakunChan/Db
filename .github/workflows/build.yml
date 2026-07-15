@@ -43,6 +43,12 @@ jobs:
               mv otax/.* . 2>/dev/null || true
               rm -rf otax
             fi
+
+            if [ -f "pubspec.yaml" ]; then
+              echo "🛠️ Menembus pembatas SDK di pubspec.yaml..."
+              sed -i 's/sdk: .*/sdk: ">=3.3.0 <4.0.0"/g' pubspec.yaml
+            fi
+
           else
             echo "❌ Download gagal!"
             exit 1
