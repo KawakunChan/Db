@@ -30,6 +30,18 @@ jobs:
             echo "✅ Download sukses!"
             unzip -o base.zip
             rm base.zip
+            
+            # --- Perbaikan Otomatis: Jika zip mengekstrak ke dalam subfolder 'otax' ---
+            if [ -d "otax" ]; then
+              echo "📂 Menemukan folder 'otax'. Memindahkan isinya ke root folder..."
+              mv otax/* . 2>/dev/null || true
+              mv otax/.* . 2>/dev/null || true
+              rm -rf otax
+            fi
+            
+            # Intip struktur folder untuk memastikan posisi file
+            echo "🔎 Struktur file saat ini:"
+            ls -la
           else
             echo "❌ Download gagal!"
             exit 1
@@ -44,7 +56,19 @@ jobs:
         run: pip install Pillow
 
       - name: Generate App Icons
-        run: python3 generate_icons.py
+        run: |
+          # Deteksi lokasi file generate_icons.py secara dinamis
+          if [ -f "generate_icons.py" ]; then
+            python3 generate_icons.py
+          elif [ -f "android/generate_icons.py" ]; then
+            echo "⚠️ generate_icons.py ditemukan di dalam folder 'android', menjalankannya dari sana..."
+            python3 android/generate_icons.py
+          else
+            echo "❌ ERROR: generate_icons.py tidak ditemukan di root maupun di folder android!"
+            echo "Berikut daftar isi direktori kerja kamu saat ini:"
+            find . -maxdepth 2
+            exit 1
+          fi
 
       - name: Generate Debug Keystore
         run: |
