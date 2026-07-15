@@ -49,7 +49,7 @@ jobs:
               sed -i '/sdk:.*[0-9]/s/sdk:.*/sdk: ">=3.6.0 <5.0.0"/' pubspec.yaml
               sed -i 's/flutter_lints: .*/flutter_lints: ^3.0.0/g' pubspec.yaml
               sed -i 's/device_info_plus: .*/device_info_plus: ^10.0.0/g' pubspec.yaml
-              echo -e "\ndependency_overrides:\n  path: 1.9.0\n  meta: 1.15.0\n  xml: 6.5.0" >> pubspec.yaml
+              echo -e "\ndependency_overrides:\n  path: 1.9.0\n  meta: 1.15.0\n  xml: 6.5.0\n  app_links: 6.4.1" >> pubspec.yaml
             fi
 
           else
