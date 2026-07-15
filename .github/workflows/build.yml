@@ -22,6 +22,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
       - name: Download Base from Release
         run: |
           curl -L -o base.zip \
@@ -31,65 +36,36 @@ jobs:
             unzip -o base.zip
             rm base.zip
             
-            # --- Perbaikan Otomatis: Jika zip mengekstrak ke dalam subfolder 'otax' ---
             if [ -d "otax" ]; then
-              echo "📂 Menemukan folder 'otax'. Memindahkan isinya ke root folder..."
+              echo "📂 Menemukan folder 'otax'. Memindahkan isinya ke root..."
               mv otax/* . 2>/dev/null || true
               mv otax/.* . 2>/dev/null || true
               rm -rf otax
             fi
-            
-            # Intip struktur folder untuk memastikan posisi file
-            echo "🔎 Struktur file saat ini:"
-            ls -la
           else
             echo "❌ Download gagal!"
             exit 1
           fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Pillow
-        run: pip install Pillow
-
-      - name: Generate App Icons
-        run: |
-          # Deteksi lokasi file generate_icons.py secara dinamis
-          if [ -f "generate_icons.py" ]; then
-            python3 generate_icons.py
-          elif [ -f "android/generate_icons.py" ]; then
-            echo "⚠️ generate_icons.py ditemukan di dalam folder 'android', menjalankannya dari sana..."
-            python3 android/generate_icons.py
-          else
-            echo "❌ ERROR: generate_icons.py tidak ditemukan di root maupun di folder android!"
-            echo "Berikut daftar isi direktori kerja kamu saat ini:"
-            find . -maxdepth 2
-            exit 1
-          fi
-
       - name: Generate Debug Keystore
         run: |
+          mkdir -p android/app
           cd android/app
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug, O=Android, C=US"
 
-      - name: Setup Gradle Wrapper
-        run: |
-          curl -L -o android/gradle/wrapper/gradle-wrapper.jar \
-            "https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar"
-          chmod +x android/gradlew
-
       - name: Build Release APK
         run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon
+          flutter pub get
+          flutter build apk --release
 
       - name: Rename APK
         run: |
           mkdir -p output
-          find android/app/build/outputs/apk/release/ -name "*.apk" | head -1 | xargs -I{} cp {} output/SyncXxX.apk
+          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk output/SyncXxX.apk
+          else
+            find android/app/build/outputs/apk/release/ -name "*.apk" | head -1 | xargs -I{} cp {} output/SyncXxX.apk
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
