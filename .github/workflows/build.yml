@@ -33,53 +33,11 @@ jobs:
           curl -L -o base.zip https://github.com/KawakunChan/Db/releases/download/v1.0.0/otax.zip
           unzip -o base.zip
           
+          # Patching error Too many positional arguments di commentSection.dart
+          # Ini mencari pola 'await' yang punya argumen, dan membuang argumennya
           sed -i 's/await commentum.listComments(widget.mediaId.toString(),/await commentum.listComments(/g' lib/ui/models/bottom_sheets/commentSection.dart || true
 
-          cat <<EOF > lib/core/database/commentum/commentumTokenStore.dart
-          import 'package:commentum_client/commentum_client.dart';
-          import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-          class CommentumTokenStore extends CommentumStorage {
-            String _providerKey(CommentumProvider provider) => "commentum_\${provider.name}_token";
-
-            final _fss = const FlutterSecureStorage();
-
-            @override
-            Future<void> clearAll() async {
-              for (final provider in CommentumProvider.values) {
-                await _fss.delete(key: _providerKey(provider));
-              }
-            }
-
-            @override
-            Future<void> deleteToken(CommentumProvider provider) {
-              return _fss.delete(key: _providerKey(provider));
-            }
-
-            @override
-            Future<String?> getToken(CommentumProvider provider) {
-              return _fss.read(key: _providerKey(provider));
-            }
-
-            @override
-            Future<void> saveToken(CommentumProvider provider, String token) {
-              return _fss.write(key: _providerKey(provider), value: token);
-            }
-
-            @override
-            Future<Map<CommentumProvider, String>> getAllTokens() async {
-              final tokens = <CommentumProvider, String>{};
-              for (final provider in CommentumProvider.values) {
-                final token = await _fss.read(key: _providerKey(provider));
-                if (token != null) {
-                  tokens[provider] = token;
-                }
-              }
-              return tokens;
-            }
-          }
-          EOF
-
+          # Tambahan: Jika perlu edit pubspec.yaml
           if [ -f "pubspec.yaml" ]; then
              sed -i '/sdk:.*[0-9]/s/sdk:.*/sdk: ">=3.6.0 <5.0.0"/' pubspec.yaml
              echo -e "\ndependency_overrides:\n  path: 1.9.0\n  meta: 1.15.0\n  xml: 6.5.0\n  app_links: 6.4.1" >> pubspec.yaml
@@ -90,7 +48,7 @@ jobs:
           flutter pub get
           flutter build apk --release
 
-      - name: Upload Artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: CyberPro-APK
